@@ -1,0 +1,43 @@
+name: Export studio WAVs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "**/*.mp3"
+
+permissions:
+  contents: read
+
+jobs:
+  export-wav:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ffmpeg
+
+      - name: Convert MP3 → WAV (PCM 24-bit, 48 kHz)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p wav_24b_48k
+          shopt -s nullglob
+          for f in *.mp3; do
+            out="wav_24b_48k/${f%.mp3}.wav"
+            echo "Converting: $f -> $out"
+            ffmpeg -hide_banner -y -i "$f" -c:a pcm_s24le -ar 48000 "$out"
+          done
+          echo "Conversion complete. Files in wav_24b_48k/:"
+          ls wav_24b_48k/
+
+      - name: Upload WAV artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wav_24b_48k
+          path: wav_24b_48k/
